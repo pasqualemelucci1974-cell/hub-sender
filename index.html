@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HUB Sender</title>
+<style>
+  :root{ --bg:#0f1620; --panel:#16202c; --line:#26323f; --ink:#e7eef5; --mut:#9fb0c0; --acc:#4f8cff; --good:#37c2a8; --bad:#ff6b6b; }
+  *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,Segoe UI,Roboto,sans-serif;padding:18px}
+  .wrap{max-width:760px;margin:0 auto}
+  h1{font-size:19px;margin:0 0 4px} p.mut{color:var(--mut);margin:.2em 0 1em}
+  label{display:block;font-weight:600;margin:14px 0 4px}
+  input,textarea{width:100%;background:#0c121a;border:1px solid var(--line);color:var(--ink);border-radius:10px;padding:10px}
+  textarea{min-height:230px;font-family:ui-monospace,Consolas,monospace;font-size:13px}
+  .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:14px}
+  button{background:var(--acc);color:#fff;border:0;border-radius:10px;padding:11px 18px;font-weight:700;cursor:pointer}
+  button.ghost{background:transparent;border:1px solid var(--line);color:var(--ink)}
+  .msg{margin-top:14px;padding:10px 12px;border-radius:10px;display:none}
+  .ok{background:#123026;border:1px solid var(--good);color:#bff3e2}
+  .err{background:#3a1620;border:1px solid var(--bad);color:#ffd7d7}
+  code{background:#0c121a;border:1px solid var(--line);border-radius:6px;padding:1px 5px}
+  small{color:var(--mut)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>HUB Sender</h1>
+  <p class="mut">Incolla il blocco <b>JSON</b> che l'AI ti d&agrave; a fine sessione e premi Invia.
+  Aggiorna il log su GitHub tramite la tua Action. Token e dati restano <b>solo su questo dispositivo</b>.</p>
+
+  <label>Repository (owner/repo)</label>
+  <input id="repo" placeholder="owner/repo" />
+
+  <label>GitHub Token (fine-grained, permesso Contents: Read&amp;Write) &mdash; salvato solo qui</label>
+  <input id="token" type="password" placeholder="github_pat_..." />
+  <small>Si salva nel browser di questo dispositivo (localStorage), non viene mai inviato altrove se non a GitHub.
+  Non ce l'hai? <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">Crealo qui</a>:
+  Repository access = solo il tuo repo &middot; Permissions &rarr; <b>Contents: Read and write</b> &rarr; Generate.</small>
+
+  <label>Payload JSON (dall'AI) &mdash; struttura annidata</label>
+  <textarea id="payload">{
+  "client_id": "_TEST",
+  "idempotency_key": "_TEST|AAAA-MM-GG|titolo-in-minuscolo",
+  "entry": {
+    "ai": "Claude",
+    "data": "AAAA-MM-GG",
+    "titolo": "Titolo breve della sessione",
+    "attivita": "Cosa e' stato fatto",
+    "decisioni": "Decisioni prese",
+    "file_modificati": "elenco o vuoto",
+    "prossime_azioni": "prossimo passo",
+    "priorita": "Alta",
+    "rischi": "",
+    "note": ""
+  }
+}</textarea>
+
+  <div class="row">
+    <button id="send">Invia all'HUB</button>
+    <button class="ghost" id="save">Salva token</button>
+    <small>Nel JSON metti il <code>client_id</code> che ti d&agrave; l'AI (codice cliente dell'HUB), oppure <code>_TEST</code> per le prove.</small>
+  </div>
+  <div id="msg" class="msg"></div>
+</div>
+
+<script>
+  var T=document.getElementById('token'), R=document.getElementById('repo'), P=document.getElementById('payload'), M=document.getElementById('msg');
+  try{ T.value = localStorage.getItem('hub_pat')||''; R.value=localStorage.getItem('hub_repo')||''; }catch(e){}
+  function show(ok,txt){ M.style.display='block'; M.className='msg '+(ok?'ok':'err'); M.textContent=txt; }
+  document.getElementById('save').onclick=function(){ try{ localStorage.setItem('hub_pat',T.value.trim()); localStorage.setItem('hub_repo',R.value.trim()); show(true,'Token e repo salvati su questo dispositivo.'); }catch(e){ show(false,'Impossibile salvare: '+e); } };
+  document.getElementById('send').onclick=async function(){
+    var tok=T.value.trim(), repo=R.value.trim();
+    if(!tok){ show(false,'Manca il token.'); return; }
+    if(!repo){ show(false,'Manca il repository (owner/repo).'); return; }
+    var data; try{ data=JSON.parse(P.value); }catch(e){ show(false,'JSON non valido: '+e.message); return; }
+    if(!data.client_id){ show(false,'Manca client_id nel JSON.'); return; }
+    try{ localStorage.setItem('hub_pat',tok); localStorage.setItem('hub_repo',repo); }catch(e){}
+    show(true,'Invio in corso...');
+    try{
+      var res=await fetch('https://api.github.com/repos/'+repo+'/dispatches',{
+        method:'POST',
+        headers:{ 'Authorization':'Bearer '+tok, 'Accept':'application/vnd.github+json', 'X-GitHub-Api-Version':'2022-11-28' },
+        body: JSON.stringify({ event_type:'hub_log', client_payload:data })
+      });
+      if(res.status===204){ show(true,'✓ Inviato! L\'Action sta scrivendo nel log (controlla tra ~30s su GitHub > Actions).'); }
+      else{ var t=await res.text(); show(false,'Errore '+res.status+': '+t); }
+    }catch(e){ show(false,'Errore di rete: '+e.message); }
+  };
+</script>
+</body>
+</html>
