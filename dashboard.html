@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cruscotto Pasquale — Live</title>
+<style>
+  :root{
+    --bg:#0b0f17;--bg2:#121826;--card:#161d2e;--line:#243049;--txt:#e7ecf5;--mut:#8a97b1;--acc:#6ea8ff;
+    --c-todo:#7d8aa6;--c-doing:#f0b429;--c-followup:#a06bff;--c-done:#27c093;--c-blocked:#ff5d6c;
+    --tu:#f0b429;--io:#37c7e0;--cli:#a06bff;--auto:#27c093;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:radial-gradient(1200px 600px at 80% -10%,#16213b 0%,var(--bg) 55%);color:var(--txt);padding:14px;min-height:100vh;-webkit-text-size-adjust:100%}
+  h1{font-size:19px;margin:0}
+  .sub{color:var(--mut);font-size:12px;margin-top:3px}
+  .bar{height:10px;border-radius:8px;background:var(--bg2);overflow:hidden;border:1px solid var(--line);margin-top:8px}
+  .bar>span{display:block;height:100%;background:linear-gradient(90deg,#27c093,#37c7e0)}
+  .toolbar{display:flex;flex-wrap:wrap;gap:7px;align-items:center;margin:14px 0}
+  input.search{flex:1;min-width:150px;background:var(--bg2);border:1px solid var(--line);color:var(--txt);padding:9px 12px;border-radius:10px;font-size:14px}
+  .chip{background:var(--bg2);border:1px solid var(--line);color:var(--mut);padding:7px 10px;border-radius:20px;font-size:12px;cursor:pointer;user-select:none}
+  .chip.active{color:#fff;border-color:var(--acc);background:#1c2740}
+  .btn{background:#1c2740;border:1px solid var(--line);color:var(--txt);padding:8px 11px;border-radius:10px;font-size:12.5px;cursor:pointer}
+  .btn:hover{border-color:var(--acc)}
+  #sync{font-size:11px;padding:5px 10px;border-radius:20px;border:1px solid var(--line)}
+  .sok{color:var(--c-done)} .ssave{color:var(--c-doing)} .serr{color:var(--c-blocked)}
+  section.area{background:linear-gradient(180deg,var(--card),#131a29);border:1px solid var(--line);border-radius:16px;margin-bottom:13px;overflow:hidden}
+  .ahead{display:flex;align-items:center;gap:9px;padding:12px 15px;cursor:pointer}
+  .ahead h2{font-size:14.5px;margin:0;flex:1}
+  .mini{font-size:11px;color:var(--mut)}
+  .minibar{width:80px;height:6px;border-radius:6px;background:var(--bg2);border:1px solid var(--line);overflow:hidden}
+  .minibar>span{display:block;height:100%;background:linear-gradient(90deg,#27c093,#37c7e0)}
+  .items{padding:2px 11px 11px}
+  .item{display:flex;gap:10px;align-items:flex-start;padding:11px;border-radius:12px;border-left:3px solid var(--line);margin-top:8px;background:#10172499}
+  .item .body{flex:1;min-width:0}
+  .item .t{font-size:14px;font-weight:600;line-height:1.3}
+  .item .d{font-size:12px;color:var(--mut);margin-top:3px;line-height:1.45}
+  .owner{font-size:10px;font-weight:700;padding:2px 7px;border-radius:6px;text-transform:uppercase;white-space:nowrap}
+  .o-Tu{background:#3a2e08;color:var(--tu)} .o-Io{background:#06303a;color:var(--io)} .o-Auto{background:#06321f;color:var(--auto)} .o-Cliente{background:#2a1748;color:var(--cli)}
+  .status{font-size:11px;font-weight:700;padding:5px 9px;border-radius:8px;cursor:pointer;white-space:nowrap;border:1px solid transparent}
+  .s-todo{background:#1b2336;color:var(--c-todo);border-color:#2a3654}
+  .s-doing{background:#3a2e05;color:var(--c-doing)}
+  .s-followup{background:#26133f;color:var(--c-followup)}
+  .s-done{background:#06301f;color:var(--c-done)}
+  .s-blocked{background:#3a0c12;color:var(--c-blocked)}
+  .item.st-done{opacity:.6} .item.st-done .t{text-decoration:line-through;text-decoration-color:#27c09377}
+  .note{width:100%;margin-top:8px;background:#0c1320;border:1px dashed var(--line);color:var(--txt);border-radius:8px;padding:6px 9px;font-size:12px;resize:vertical;display:none}
+  .note.show{display:block}
+  .notebtn{font-size:10px;color:var(--mut);cursor:pointer;margin-top:6px;display:inline-block}
+  .right{display:flex;flex-direction:column;gap:6px;align-items:flex-end}
+  .legend{display:flex;gap:8px;flex-wrap:wrap;font-size:11px;color:var(--mut);margin-top:8px}
+  .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:4px}
+  #overlay{position:fixed;inset:0;background:#0b0f17ee;display:flex;align-items:center;justify-content:center;padding:20px;z-index:50}
+  #overlay .box{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:22px;max-width:440px;width:100%}
+  #overlay input{width:100%;background:var(--bg2);border:1px solid var(--line);color:var(--txt);padding:10px;border-radius:10px;margin:10px 0;font-size:13px}
+  footer{color:var(--mut);font-size:11px;text-align:center;margin-top:16px;line-height:1.6}
+  .hidden{display:none!important}
+</style>
+</head>
+<body>
+<header>
+  <h1>🛰️ Cruscotto Pasquale <span id="sync" class="sok">●</span></h1>
+  <div class="sub">Sincronizzato live via HUB · <span id="stamp"></span></div>
+  <div class="bar"><span id="ovbar"></span></div>
+  <div class="sub" style="margin-top:6px"><b id="ovpct">0%</b> · <span id="ovcount"></span></div>
+  <div class="legend">
+    <span><i class="dot" style="background:var(--c-todo)"></i>Da iniziare</span>
+    <span><i class="dot" style="background:var(--c-doing)"></i>In corso</span>
+    <span><i class="dot" style="background:var(--c-followup)"></i>Follow-up</span>
+    <span><i class="dot" style="background:var(--c-done)"></i>Concluso</span>
+    <span><i class="dot" style="background:var(--c-blocked)"></i>Bloccato</span>
+  </div>
+</header>
+
+<div class="toolbar">
+  <input class="search" id="search" placeholder="🔎 cerca…">
+  <span class="chip active" data-f="all">Tutti</span>
+  <span class="chip" data-f="todo">Da fare</span>
+  <span class="chip" data-f="doing">In corso</span>
+  <span class="chip" data-f="followup">Follow-up</span>
+  <span class="chip" data-f="done">Fatto</span>
+  <button class="btn" id="refresh">↻ Aggiorna</button>
+  <button class="btn" id="logout">PAT</button>
+</div>
+
+<div id="root"></div>
+<footer>Cambi lo stato → si salva nell'HUB e appare su tutti i tuoi dispositivi. Token solo in questo browser (localStorage).</footer>
+
+<div id="overlay" class="hidden"><div class="box">
+  <h2 style="margin:0 0 4px">🔐 Collega l'HUB</h2>
+  <div class="sub">Incolla il tuo GitHub PAT (lo stesso del sender Fase 3 — permesso Contents: Read/Write sul repo HUB). Resta solo su questo dispositivo.</div>
+  <input id="patin" type="password" placeholder="github_pat_... oppure ghp_...">
+  <button class="btn" id="patsave" style="width:100%">Collega e carica</button>
+  <div class="sub" id="paterr" style="color:var(--c-blocked);margin-top:8px"></div>
+</div></div>
+
+<script>
+const REPO='pasqualemelucci1974-cell/HUB';
+const PATH='PASQUALE_AI_HUB/07_AGENTI/dashboard_data.json';
+const BRANCH='main';
+const API=`https://api.github.com/repos/${REPO}/contents/${PATH}`;
+const ORDER=['todo','doing','followup','done','blocked'];
+const LABEL={todo:'Da iniziare',doing:'In corso',followup:'Follow-up',done:'Concluso',blocked:'Bloccato'};
+
+let DATA=null, sha=null, filter='all', q='', saveTimer=null, saving=false;
+
+function pat(){return localStorage.getItem('hub_pat')||'';}
+function b64e(s){return btoa(unescape(encodeURIComponent(s)));}
+function b64d(s){return decodeURIComponent(escape(atob(s.replace(/\n/g,''))));}
+function setSync(t,cls){const e=document.getElementById('sync');e.textContent=t;e.className=cls;}
+
+async function ghLoad(){
+  const r=await fetch(API+`?ref=${BRANCH}`,{headers:{Authorization:'Bearer '+pat(),Accept:'application/vnd.github+json'}});
+  if(r.status===401||r.status===403){throw new Error('PAT non valido o senza permessi');}
+  if(!r.ok){throw new Error('GitHub '+r.status);}
+  const j=await r.json(); sha=j.sha; return JSON.parse(b64d(j.content));
+}
+async function ghSave(){
+  if(saving)return; saving=true; setSync('● salvataggio…','ssave');
+  try{
+    DATA.updated=new Date().toISOString().slice(0,10);
+    const body={message:'dashboard: aggiornamento stato',content:b64e(JSON.stringify(DATA,null,2)),sha:sha,branch:BRANCH};
+    let r=await fetch(API,{method:'PUT',headers:{Authorization:'Bearer '+pat(),Accept:'application/vnd.github+json'},body:JSON.stringify(body)});
+    if(r.status===409){ // conflitto: ricarico sha e riprovo una volta
+      const cur=await fetch(API+`?ref=${BRANCH}`,{headers:{Authorization:'Bearer '+pat()}}); const cj=await cur.json(); sha=cj.sha; body.sha=sha;
+      r=await fetch(API,{method:'PUT',headers:{Authorization:'Bearer '+pat(),Accept:'application/vnd.github+json'},body:JSON.stringify(body)});
+    }
+    if(!r.ok)throw new Error('PUT '+r.status);
+    const j=await r.json(); sha=j.content.sha; setSync('● sincronizzato','sok');
+  }catch(e){setSync('● errore: '+e.message,'serr');}
+  saving=false;
+}
+function scheduleSave(){clearTimeout(saveTimer);setSync('● in attesa…','ssave');saveTimer=setTimeout(ghSave,1200);}
+
+function eachItem(fn){DATA.sections.forEach(s=>s.items.forEach(fn));}
+function render(){
+  const root=document.getElementById('root');root.innerHTML='';
+  let tot=0,done=0;
+  DATA.sections.forEach(sec=>{
+    let sd=0,vis=0,html='';
+    sec.items.forEach(it=>{
+      const s=it.s||'todo'; tot++; if(s==='done'){done++;sd++;}
+      const mf=filter==='all'||s===filter;
+      const mq=!q||(it.t+' '+(it.d||'')).toLowerCase().includes(q);
+      if(!(mf&&mq))return; vis++;
+      const nt=it.note||'';
+      html+=`<div class="item st-${s}" style="border-left-color:var(--c-${s})"><div class="body">
+        <div class="t">${esc(it.t)}</div>${it.d?`<div class="d">${esc(it.d)}</div>`:''}
+        <span class="notebtn" data-note="${it.id}">📝 ${nt?'nota':'aggiungi nota'}</span>
+        <textarea class="note ${nt?'show':''}" data-na="${it.id}" placeholder="appunti…">${esc(nt)}</textarea>
+      </div><div class="right">
+        <span class="owner o-${it.o||'Io'}">${it.o||'Io'}</span>
+        <span class="status s-${s}" data-st="${it.id}">${LABEL[s]}</span>
+      </div></div>`;
+    });
+    const pct=sec.items.length?Math.round(sd/sec.items.length*100):0;
+    const el=document.createElement('section');el.className='area';
+    el.innerHTML=`<div class="ahead"><h2>${sec.icon||''} ${esc(sec.name)}</h2><span class="mini">${sd}/${sec.items.length}</span><span class="minibar"><span style="width:${pct}%"></span></span></div><div class="items" ${vis?'':'style="display:none"'}>${html}</div>`;
+    root.appendChild(el);
+  });
+  const op=tot?Math.round(done/tot*100):0;
+  document.getElementById('ovbar').style.width=op+'%';
+  document.getElementById('ovpct').textContent=op+'%';
+  document.getElementById('ovcount').textContent=done+' / '+tot+' concluse';
+  document.getElementById('stamp').textContent='agg. '+(DATA.updated||'');
+}
+function esc(s){return (s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+function findItem(id){let r=null;eachItem(it=>{if(it.id===id)r=it;});return r;}
+
+document.addEventListener('click',e=>{
+  const st=e.target.closest('[data-st]'); if(st){const it=findItem(st.dataset.st);it.s=ORDER[(ORDER.indexOf(it.s||'todo')+1)%ORDER.length];render();scheduleSave();return;}
+  const nb=e.target.closest('[data-note]'); if(nb){const ta=document.querySelector(`[data-na="${nb.dataset.note}"]`);ta.classList.toggle('show');if(ta.classList.contains('show'))ta.focus();return;}
+  const ah=e.target.closest('.ahead'); if(ah){const it=ah.nextElementSibling;it.style.display=it.style.display==='none'?'':'none';return;}
+});
+document.addEventListener('change',e=>{const ta=e.target.closest('[data-na]');if(ta){findItem(ta.dataset.na).note=ta.value;scheduleSave();}});
+document.querySelectorAll('.chip').forEach(c=>c.addEventListener('click',()=>{document.querySelectorAll('.chip').forEach(x=>x.classList.remove('active'));c.classList.add('active');filter=c.dataset.f;render();}));
+document.getElementById('search').addEventListener('input',e=>{q=e.target.value.toLowerCase();render();});
+document.getElementById('refresh').addEventListener('click',()=>boot());
+document.getElementById('logout').addEventListener('click',()=>{localStorage.removeItem('hub_pat');showOverlay();});
+document.getElementById('patsave').addEventListener('click',()=>{const v=document.getElementById('patin').value.trim();if(!v)return;localStorage.setItem('hub_pat',v);document.getElementById('overlay').classList.add('hidden');boot();});
+
+function showOverlay(){document.getElementById('overlay').classList.remove('hidden');}
+async function boot(){
+  if(!pat()){showOverlay();return;}
+  setSync('● carico…','ssave');
+  try{DATA=await ghLoad();render();setSync('● sincronizzato','sok');}
+  catch(e){setSync('● '+e.message,'serr');document.getElementById('paterr').textContent=e.message;showOverlay();}
+}
+boot();
+</script>
+</body>
+</html>
